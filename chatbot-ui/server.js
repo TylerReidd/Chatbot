@@ -1,0 +1,111 @@
+/* eslint-env node */
+/* global process */
+import 'dotenv/config'
+import express from 'express'
+import cors from 'cors'
+import { ChromaClient } from 'chromadb'
+import OpenAI from 'openai'
+import { resolvePreset, defaultPresetId } from './src/botPresets.js'
+
+const app = express()
+app.use(express.json())
+app.use(cors())
+
+const client = new ChromaClient({
+  host: "localhost",
+  port: 8000,
+  ssl: false,
+  apiPath: "/api/v2"
+})
+const FALLBACK_COLLECTION = 'sales_docs'
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+const ENABLE_RAG = process.env.ENABLE_RAG !== 'false'
+
+if (!process.env.OPENAI_API_KEY) {
+  console.warn("⚠️  OPENAI_API_KEY is not set. The /chat endpoint will fail until it is configured.")
+}
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
+
+const getCollection = async (collectionName) => {
+  if (!ENABLE_RAG) return null
+  const name = collectionName || FALLBACK_COLLECTION
+  return client.getOrCreateCollection({ name })
+}
+
+const getContext = async (presetConfig, latestUserMsg) => {
+  if (!ENABLE_RAG) return "Context retrieval disabled."
+
+  try {
+    const collection = await getCollection(presetConfig.ragCollection)
+    if (!collection) return "No context available."
+
+    const lookupText = latestUserMsg || presetConfig.description || "sales coaching"
+    const results = await collection.query({ queryTexts: [lookupText], nResults: 2 })
+    return results?.documents?.flat().join("\n\n") || "No relevant context found."
+  } catch (err) {
+    console.warn("Chroma unavailable, continuing without context:", err.message)
+    return "Context temporarily unavailable."
+  }
+}
+
+app.post("/api/rag", async (req,res) => {
+  const {query, preset = defaultPresetId} = req.body
+  const presetConfig = resolvePreset(preset)
+
+  if (!ENABLE_RAG) {
+    return res.json({
+      preset: presetConfig.id,
+      context: "RAG is disabled. Enable by setting ENABLE_RAG=true.",
+    })
+  }
+
+  try {
+    const collection = await getCollection(presetConfig.ragCollection)
+    if (!collection) throw new Error("Collection unavailable")
+
+    const results = await collection.query({queryTexts: [query], nResults:2})
+    const context = results?.documents?.flat().join("\n\n") || "No Relevant context found"
+    res.json({preset: presetConfig.id, context})
+  } catch (err) {
+    console.error("RAG retrieval error: ", err)
+    res.status(503).json({
+      error: "RAG retrieval failed",
+      details: err.message,
+    })
+  }
+})
+
+app.post("/chat", async (req,res) => {
+  try {
+    const { preset = defaultPresetId, messages: userMessages = [] } = req.body
+    const presetConfig = resolvePreset(preset)
+
+    const latestUserMsg = userMessages.filter((m) => m.sender === "user").pop()?.text || ""
+
+    const context = await getContext(presetConfig, latestUserMsg)
+
+    const completion = await openai.chat.completions.create({
+      model: presetConfig.model || OPENAI_MODEL,
+      temperature: presetConfig.temperature ?? 0.7,
+      messages: [
+        {role: "system", content: presetConfig.systemPrompt},
+        {role: "system", content: `Relevant knowledge base context:\n${context}`},
+        ...userMessages.map((m) => ({
+          role: m.sender === "user" ? "user" : "assistant",
+          content: m.text,
+        })),
+      ],
+    })
+
+    console.log(`✅ Sent to OpenAI (${presetConfig.displayName}), waiting for reply...`)
+    res.json({ preset: presetConfig.id, choices: completion.choices })
+  } catch (error) {
+    console.error("Chat error:", error)
+    res.status(500).json({error: "Chat processing failed", details: error.message})
+  }
+})
+
+app.listen(5001, () => console.log("RAG server running on port 5001"))
