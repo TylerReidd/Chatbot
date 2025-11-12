@@ -117,10 +117,13 @@ export default function ChatUI({
     }
   };
 
+  const embeddedDimensions = "w-full min-h-[540px] lg:min-h-[620px] max-h-[85vh]";
+  const standaloneDimensions = "w-[700px] h-[900px]";
+
   const panel = (
     <div
       className={`bg-white shadow-xl rounded-2xl flex flex-col ${
-        isStandalone ? "w-[700px] h-[900px]" : "w-full h-104"
+        isStandalone ? standaloneDimensions : embeddedDimensions
       }`}
     >
       <div
