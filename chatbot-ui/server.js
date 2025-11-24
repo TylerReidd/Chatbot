@@ -6,20 +6,26 @@ import cors from 'cors'
 import { ChromaClient } from 'chromadb'
 import OpenAI from 'openai'
 import { resolvePreset, defaultPresetId } from './src/botPresets.js'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
 const app = express()
 app.use(express.json())
 app.use(cors())
 
 const client = new ChromaClient({
-  host: "localhost",
-  port: 8000,
-  ssl: false,
-  apiPath: "/api/v2"
+  host: process.env.CHROMA_HOST || "localhost",
+  port: Number(process.env.CHROMA_PORT) || 8000,
+  ssl: process.env.CHROMA_SSL === 'true',
+  apiPath: process.env.CHROMA_API_PATH || "/api/v2"
 })
 const FALLBACK_COLLECTION = 'sales_docs'
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
 const ENABLE_RAG = process.env.ENABLE_RAG !== 'false'
+const PORT = process.env.PORT || 5001
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const distPath = path.resolve(__dirname, 'dist')
 
 if (!process.env.OPENAI_API_KEY) {
   console.warn("⚠️  OPENAI_API_KEY is not set. The /chat endpoint will fail until it is configured.")
@@ -108,4 +114,11 @@ app.post("/chat", async (req,res) => {
   }
 })
 
-app.listen(5001, () => console.log("RAG server running on port 5001"))
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(distPath))
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'))
+  })
+}
+
+app.listen(PORT, () => console.log(`RAG server running on port ${PORT}`))

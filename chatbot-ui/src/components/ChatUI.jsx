@@ -55,6 +55,16 @@ const buildIntro = (presetConfig) => {
   return `Hi there! I'm your ${presetConfig.displayName}. ${descriptor}`;
 };
 
+const resolveApiBase = () => {
+  const rawBase =
+    import.meta.env.VITE_API_BASE_URL ??
+    (import.meta.env.PROD ? "" : "http://localhost:5001")
+  if (!rawBase) return ""
+  return rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase
+}
+
+const apiBase = resolveApiBase()
+
 export default function ChatUI({
   preset = defaultPresetId,
   variant = "standalone",
@@ -88,7 +98,7 @@ export default function ChatUI({
     setIsSending(true);
 
     try {
-      const response = await fetch("http://localhost:5001/chat", {
+      const response = await fetch(`${apiBase}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preset: presetConfig.id, messages: updatedMessages }),
