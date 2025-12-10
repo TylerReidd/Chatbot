@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { resolvePreset, defaultPresetId } from "../botPresets";
+import { useAuth } from "../hooks/useAuth.jsx";
+import { apiBase } from "../utils/api.js";
 
 const themeMap = {
   indigo: {
@@ -55,16 +57,6 @@ const buildIntro = (presetConfig) => {
   return `Hi there! I'm your ${presetConfig.displayName}. ${descriptor}`;
 };
 
-const resolveApiBase = () => {
-  const rawBase =
-    import.meta.env.VITE_API_BASE_URL ??
-    (import.meta.env.PROD ? "" : "http://localhost:5001")
-  if (!rawBase) return ""
-  return rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase
-}
-
-const apiBase = resolveApiBase()
-
 export default function ChatUI({
   preset = defaultPresetId,
   variant = "standalone",
@@ -74,6 +66,7 @@ export default function ChatUI({
   const presetConfig = resolvePreset(preset);
   const theme = themeMap[presetConfig.theme] ?? themeMap.indigo;
   const isStandalone = variant === "standalone";
+  const { token } = useAuth();
 
   const [messages, setMessages] = useState(() => [
     { sender: "bot", text: buildIntro(presetConfig) },
@@ -98,9 +91,14 @@ export default function ChatUI({
     setIsSending(true);
 
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${apiBase}/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ preset: presetConfig.id, messages: updatedMessages }),
       });
 

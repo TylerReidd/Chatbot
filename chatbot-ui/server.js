@@ -5,7 +5,11 @@ import express from 'express'
 import cors from 'cors'
 import { ChromaClient } from 'chromadb'
 import OpenAI from 'openai'
+import mongoose from 'mongoose'
 import { resolvePreset, defaultPresetId } from './src/botPresets.js'
+import { login } from './controllers/login.js'
+import { signup } from './controllers/signup.js'
+import { authenticate } from './middleware/auth.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -23,6 +27,8 @@ const FALLBACK_COLLECTION = 'sales_docs'
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
 const ENABLE_RAG = process.env.ENABLE_RAG !== 'false'
 const PORT = process.env.PORT || 5001
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/chatbot'
+const MONGO_DB_NAME = process.env.MONGO_DB_NAME
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distPath = path.resolve(__dirname, 'dist')
@@ -84,7 +90,7 @@ app.post("/api/rag", async (req,res) => {
   }
 })
 
-app.post("/chat", async (req,res) => {
+app.post("/chat", authenticate, async (req,res) => {
   try {
     const { preset = defaultPresetId, messages: userMessages = [] } = req.body
     const presetConfig = resolvePreset(preset)
@@ -114,6 +120,15 @@ app.post("/chat", async (req,res) => {
   }
 })
 
+app.post('/api/login', login)
+app.get('/api/me', authenticate, (req, res) => {
+  res.json({ user: req.signedInUser })
+})
+app.post('/api/signup', signup)
+
+console.log("loaded JWS secret", process.env.JWS_SECRET)
+console.log("loaded JWt secret", process.env.JWT_SECRET)
+
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(distPath))
   app.get(/.*/, (_req, res) => {
@@ -121,4 +136,20 @@ if (process.env.NODE_ENV === 'production') {
   })
 }
 
-app.listen(PORT, () => console.log(`RAG server running on port ${PORT}`))
+const connectToDatabase = async () => {
+  if (mongoose.connection.readyState >= 1) return
+  try {
+    await mongoose.connect(MONGO_URI, MONGO_DB_NAME ? { dbName: MONGO_DB_NAME } : undefined)
+    console.log('✅ Connected to MongoDB')
+  } catch (error) {
+    console.error('MongoDB connection error:', error)
+    process.exit(1)
+  }
+}
+
+const start = async () => {
+  await connectToDatabase()
+  app.listen(PORT, () => console.log(`RAG server running on port ${PORT}`))
+}
+
+start()
