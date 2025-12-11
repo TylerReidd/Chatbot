@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
+import { apiBase } from '../utils/api.js'
 
 export default function SignupPage() {
   const { isAuthenticated, isAuthenticating } = useAuth()
@@ -78,7 +79,7 @@ export default function SignupPage() {
       //     password: formValues.password,
       //   }),
       // })
-      const response = await fetch('http://localhost:5001/api/signup', {
+      const response = await fetch(`${apiBase}/api/signup`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
