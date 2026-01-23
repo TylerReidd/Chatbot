@@ -9,6 +9,7 @@ import mongoose from 'mongoose'
 import { resolvePreset, defaultPresetId } from './src/botPresets.js'
 import { login } from './controllers/login.js'
 import { signup } from './controllers/signup.js'
+import { updateMe } from './controllers/updateMe.js'
 import { authenticate } from './middleware/auth.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -124,6 +125,7 @@ app.post('/api/login', login)
 app.get('/api/me', authenticate, (req, res) => {
   res.json({ user: req.signedInUser })
 })
+app.patch('/api/me', authenticate, updateMe)
 app.post('/api/signup', signup)
 
 console.log("loaded JWS secret", process.env.JWS_SECRET)

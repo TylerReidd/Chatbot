@@ -36,6 +36,10 @@ const userSchema = new mongoose.Schema(
       enum: validRoles,
       default: UserRoles.REPRESENTATIVE,
     },
+    onboardingComplete: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
@@ -45,13 +49,8 @@ const userSchema = new mongoose.Schema(
 userSchema.pre('save', async function hashPassword() {
   if (!this.isModified('password')) return
 
-  try {
-    const salt = await bcrypt.genSalt(SALT_ROUNDS)
-    this.password = await bcrypt.hash(this.password, salt)
-    next()
-  } catch (err) {
-    console.error('Error hashing password:', err)
-  }
+  const salt = await bcrypt.genSalt(SALT_ROUNDS)
+  this.password = await bcrypt.hash(this.password, salt)
 })
 
 userSchema.methods.comparePassword = function comparePassword(candidate) {

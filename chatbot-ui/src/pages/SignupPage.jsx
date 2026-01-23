@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth.jsx'
 import { apiBase } from '../utils/api.js'
 
 export default function SignupPage() {
-  const { isAuthenticated, isAuthenticating } = useAuth()
+  const { signup, isAuthenticated, isAuthenticating } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -59,51 +59,17 @@ export default function SignupPage() {
     setError(null)
 
     try {
-      // 🔧 OPTION A:
-      // If you add a `signup` function to useAuth, call it here:
-      //
-      //   await signup({
-      //     name: formValues.name.trim(),
-      //     email: formValues.email.trim(),
-      //     password: formValues.password,
-      //   })
-      //
-      // For now, I'll show a direct fetch so this file is self-contained.
+    await signup({
+      name: formValues.name,
+      email: formValues.email,
+      password: formValues.password
+    })
 
-      // const response = await fetch('/api/signup', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     name: formValues.name.trim(),
-      //     email: formValues.email.trim(),
-      //     password: formValues.password,
-      //   }),
-      // })
-      const response = await fetch(`${apiBase}/api/signup`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    name: formValues.name.trim(),
-    email: formValues.email.trim(),
-    password: formValues.password,
-  }),
-})
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.error || 'Signup failed. Please try again.')
-      }
-
-      // You *could* auto-login from the signup response if it returns a token.
-      // For now, simplest UX: send them to login.
-      navigate('/login', {
-        replace: true,
-        state: { from },
-      })
-    } catch (err) {
-      console.error(err)
-      setError(err.message)
-    }
+    navigate('/onboarding', {replace: true})
+  } catch (err) {
+    console.error(err)
+    setError(err.message)
+  }
   }
 
   return (

@@ -1,7 +1,6 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './App.css'
-import HomePage from './pages/HomePage'
 import Greeting from './pages/Greeting'
 import Presenting from './pages/Presenting'
 import Objections from './pages/Objections'
@@ -11,6 +10,9 @@ import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import Unauthorized from './pages/Unauthorized.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
+import Onboarding from './pages/Onboarding.jsx'
+import OnboardingGate from './components/OnboardingGate.jsx'
+import Dashboard from './pages/Dashboard.jsx'
 
 function App() {
   return (
@@ -21,12 +23,16 @@ function App() {
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         <Route element={<RequireAuth />}>
-          <Route path="/" element={<HomePage />} />
+          <Route element={<OnboardingGate />}>
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/greeting" element={<Greeting />} />
           <Route path="/presenting" element={<Presenting />} />
           <Route path="/objections" element={<Objections />} />
           <Route path="/closing" element={<Closing />} />
           <Route path="/followup" element={<FollowUp />} />
+        </Route>
         </Route>
       </Routes>
     </BrowserRouter>

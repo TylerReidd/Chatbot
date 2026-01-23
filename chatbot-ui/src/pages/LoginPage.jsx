@@ -3,13 +3,13 @@ import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
 
 export default function LoginPage() {
-  const { login, isAuthenticated, isAuthenticating, error } = useAuth()
+  const { login, isAuthenticated, isAuthenticating, error, user } = useAuth()
   const [formValues, setFormValues] = useState({ email: '', password: '' })
   const [localError, setLocalError] = useState(null)
   const navigate = useNavigate()
   const location = useLocation()
 
-  const from = location.state?.from?.pathname || '/'
+  const from = location.state?.from?.pathname || '/dashboard'
 
   if (isAuthenticated) {
     return <Navigate to={from} replace />
@@ -25,11 +25,11 @@ export default function LoginPage() {
     setLocalError(null)
 
     try {
-      await login({
+      const payload = await login({
         email: formValues.email.trim(),
         password: formValues.password,
       })
-      navigate(from, { replace: true })
+      navigate('/dashboard', { replace: true })
     } catch (err) {
       setLocalError(err.message)
     }
