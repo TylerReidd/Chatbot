@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
-import salesCoachImage from "../assets/images/image001.PNG";
 
 // Keep this aligned with the steps you actually render.
 const STEPS = ["Welcome", "Experience", "Context", "Strengths", "Scenario", "Plan"];
@@ -73,11 +72,8 @@ export default function Onboarding() {
                 align="center"
                 header={
                   <div className="mb-2 flex justify-center">
-                    <img
-                      src={salesCoachImage}
-                      alt="Sales coach"
-                      className="h-80 w-100 max-w-full object-contain"
-                    />
+                    <img src="/images/image001.PNG" alt="..." />
+
                   </div>
                 }
                 title="Welcome to your Sales Coach"
