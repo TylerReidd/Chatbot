@@ -35,7 +35,7 @@ export default function Dashboard() {
             <h1 className="mt-2 text-4xl font-semibold text-slate-900">Welcome back, {displayName}.</h1>
           </div>
           <Link
-            to="/greeting"
+            to="/home"
             className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800"
           >
             Start Coaching
@@ -100,7 +100,7 @@ export default function Dashboard() {
           </section>
 
           <section className="rounded-3xl border border-slate-200/80 bg-white/90 p-8 shadow-sm backdrop-blur">
-            <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 p-5 text-white">
+            <div className="rounded-2xl bg-linear-to-r from-slate-900 via-slate-800 to-slate-700 p-5 text-white">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-200">Tip of the Day</p>
               <h2 className="mt-2 text-2xl font-semibold">
                 Lead with curiosity, then offer two clear options.

@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './App.css'
+import HomePage from './pages/HomePage'
 import Greeting from './pages/Greeting'
 import Presenting from './pages/Presenting'
 import Objections from './pages/Objections'
@@ -27,6 +28,7 @@ function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/greeting" element={<Greeting />} />
           <Route path="/presenting" element={<Presenting />} />
           <Route path="/objections" element={<Objections />} />
