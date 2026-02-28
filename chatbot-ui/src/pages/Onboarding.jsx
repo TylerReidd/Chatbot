@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
+import { getDashboardPath } from "../utils/roles.js";
 
 // Keep this aligned with the steps you actually render.
 const STEPS = ["Welcome", "Experience", "Context", "Strengths", "Scenario", "Plan"];
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { updateUser } = useAuth();
+  const { updateUser, user } = useAuth();
 
   const [step, setStep] = useState(0);
   const [data, setData] = useState({
@@ -43,7 +44,7 @@ export default function Onboarding() {
     window.localStorage.setItem("onboarding.profile", JSON.stringify(data));
     try {
       await updateUser({ onboardingComplete: true });
-      navigate("/dashboard", { replace: true });
+      navigate(getDashboardPath(user?.role), { replace: true });
     } catch (err) {
       setSaveError(err?.message || "Unable to complete onboarding.");
       setIsSaving(false);

@@ -10,7 +10,9 @@ import { resolvePreset, defaultPresetId } from './src/botPresets.js'
 import { login } from './controllers/login.js'
 import { signup } from './controllers/signup.js'
 import { updateMe } from './controllers/updateMe.js'
-import { authenticate } from './middleware/auth.js'
+import { addEmployeeByEmail, assignCourse, getManagedEmployees } from './controllers/manager.js'
+import { authenticate, requireRole } from './middleware/auth.js'
+import { UserRoles } from './models/User.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -48,15 +50,33 @@ const getCollection = async (collectionName) => {
   return client.getOrCreateCollection({ name })
 }
 
-const getContext = async (presetConfig, latestUserMsg) => {
-  if (!ENABLE_RAG) return "Context retrieval disabled."
+const normalizeRagOptions = (presetConfig, rag) => {
+  const enabled = ENABLE_RAG && rag?.enabled !== false
+  const collectionName =
+    typeof rag?.collection === "string" && rag.collection.trim()
+      ? rag.collection.trim()
+      : presetConfig.ragCollection
+  const query =
+    typeof rag?.query === "string" && rag.query.trim() ? rag.query.trim() : null
+  const topKRaw = Number(rag?.topK)
+  const topK = Number.isFinite(topKRaw) ? Math.min(Math.max(Math.trunc(topKRaw), 1), 8) : 2
+
+  return { enabled, collectionName, query, topK }
+}
+
+const getContext = async (presetConfig, latestUserMsg, ragOptions = {}) => {
+  if (!ragOptions.enabled) return "Context retrieval disabled."
 
   try {
-    const collection = await getCollection(presetConfig.ragCollection)
+    const collection = await getCollection(ragOptions.collectionName)
     if (!collection) return "No context available."
 
-    const lookupText = latestUserMsg || presetConfig.description || "sales coaching"
-    const results = await collection.query({ queryTexts: [lookupText], nResults: 2 })
+    const lookupText =
+      ragOptions.query || latestUserMsg || presetConfig.description || "sales coaching"
+    const results = await collection.query({
+      queryTexts: [lookupText],
+      nResults: ragOptions.topK || 2,
+    })
     return results?.documents?.flat().join("\n\n") || "No relevant context found."
   } catch (err) {
     console.warn("Chroma unavailable, continuing without context:", err.message)
@@ -93,12 +113,13 @@ app.post("/api/rag", async (req,res) => {
 
 app.post("/chat", authenticate, async (req,res) => {
   try {
-    const { preset = defaultPresetId, messages: userMessages = [] } = req.body
+    const { preset = defaultPresetId, messages: userMessages = [], rag } = req.body
     const presetConfig = resolvePreset(preset)
+    const ragOptions = normalizeRagOptions(presetConfig, rag)
 
     const latestUserMsg = userMessages.filter((m) => m.sender === "user").pop()?.text || ""
 
-    const context = await getContext(presetConfig, latestUserMsg)
+    const context = await getContext(presetConfig, latestUserMsg, ragOptions)
 
     const completion = await openai.chat.completions.create({
       model: presetConfig.model || OPENAI_MODEL,
@@ -114,7 +135,15 @@ app.post("/chat", authenticate, async (req,res) => {
     })
 
     console.log(`✅ Sent to OpenAI (${presetConfig.displayName}), waiting for reply...`)
-    res.json({ preset: presetConfig.id, choices: completion.choices })
+    res.json({
+      preset: presetConfig.id,
+      choices: completion.choices,
+      rag: {
+        enabled: ragOptions.enabled,
+        collection: ragOptions.collectionName || FALLBACK_COLLECTION,
+        topK: ragOptions.topK,
+      },
+    })
   } catch (error) {
     console.error("Chat error:", error)
     res.status(500).json({error: "Chat processing failed", details: error.message})
@@ -126,6 +155,9 @@ app.get('/api/me', authenticate, (req, res) => {
   res.json({ user: req.signedInUser })
 })
 app.patch('/api/me', authenticate, updateMe)
+app.get('/api/manager/employees', authenticate, requireRole(UserRoles.MANAGER), getManagedEmployees)
+app.post('/api/manager/employees', authenticate, requireRole(UserRoles.MANAGER), addEmployeeByEmail)
+app.post('/api/manager/assignments', authenticate, requireRole(UserRoles.MANAGER), assignCourse)
 app.post('/api/signup', signup)
 
 console.log("loaded JWS secret", process.env.JWS_SECRET)

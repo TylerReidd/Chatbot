@@ -13,7 +13,7 @@ const modules = [
 const badges = ["Customer First", "Smooth Closer", "Objection Ninja"];
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const displayName = user?.name || user?.email || "there";
 
   const completedCount = useMemo(
@@ -34,12 +34,21 @@ export default function Dashboard() {
             <p className="text-base uppercase tracking-[0.18em] text-slate-400">Sales Coach Dashboard</p>
             <h1 className="mt-2 text-4xl font-semibold text-slate-900">Welcome back, {displayName}.</h1>
           </div>
-          <Link
-            to="/home"
-            className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800"
-          >
-            Start Coaching
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={logout}
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
+            >
+              Log out
+            </button>
+            <Link
+              to="/home"
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800"
+            >
+              Start Coaching
+            </Link>
+          </div>
         </div>
 
         <div className="grid flex-1 gap-6 md:grid-cols-2 lg:gap-8">

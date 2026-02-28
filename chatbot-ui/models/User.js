@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken'
 export const UserRoles = Object.freeze({
   ADMIN: 'admin',
   MANAGER: 'manager',
+  EMPLOYEE: 'employee',
   REPRESENTATIVE: 'representative',
 })
 
@@ -34,7 +35,16 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: validRoles,
-      default: UserRoles.REPRESENTATIVE,
+      default: UserRoles.EMPLOYEE,
+    },
+    managerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    assignedCourses: {
+      type: [String],
+      default: [],
     },
     onboardingComplete: {
       type: Boolean,
@@ -45,6 +55,13 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   }
 )
+
+userSchema.path('role').set(function setRole(value) {
+  if (value === UserRoles.REPRESENTATIVE) {
+    return UserRoles.EMPLOYEE
+  }
+  return value
+})
 
 userSchema.pre('save', async function hashPassword() {
   if (!this.isModified('password')) return
@@ -79,9 +96,13 @@ userSchema.methods.generateAuthToken = function generateAuthToken(options = {}) 
 
 export const User = mongoose.models.User || mongoose.model('User', userSchema)
 
+export const normalizeUserRole = (role) =>
+  role === UserRoles.REPRESENTATIVE ? UserRoles.EMPLOYEE : role
+
 export const sanitizeUser = (userDoc) => {
   if (!userDoc) return null
   const doc = userDoc.toObject ? userDoc.toObject() : userDoc
+  doc.role = normalizeUserRole(doc.role)
   delete doc.password
   return doc
 }

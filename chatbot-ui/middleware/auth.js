@@ -17,7 +17,8 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'Authentication required.' })
     }
 
-    const secret = process.env.JWS_SECRET || process.env.JWT_SECRET
+    // Match token-signing secret precedence in models/User.js
+    const secret = process.env.JWT_SECRET || process.env.JWS_SECRET
     if (!secret) {
       throw new Error('JWT/JWS secret is not configured')
     }

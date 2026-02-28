@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { apiBase } from '../utils/api.js'
 
 const TOKEN_KEY = 'auth.token'
@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
-  const signup = useCallback(async ({ name, email, password, role }) => {
+  const signup = useCallback(async ({ name, email, password }) => {
     if(!name || !email || !password) {
       const message = 'Name, email and password are required.'
       setError(message)
@@ -89,68 +89,15 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          name: name.trim(), 
-          email: email.trim(), 
-          password,
-          role,
-         }),
+          name:name.trim(), 
+          email:email.trim(), 
+          password:password.trim() }),
       })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Unable to sign up.')
-      }
-
-      persistSession(payload.token, payload.user)
-      setToken(payload.token)
-      setUser(payload.user)
-      return payload
-    } catch (err) {
-      const message = err.message || 'Unable to sign up.'
-      setError(message)
-      throw new Error(message)
-    } finally {
-      setIsAuthenticating(false)
   }
-  }, [])
-
-  const updateUser = useCallback(async (patch) => {
-    if (!token) {
-      const message = 'Authentication required.'
-      setError(message)
-      throw new Error(message)
-    }
-
-    setError(null)
-    try {
-      const response = await fetch(`${apiBase}/api/me`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(patch || {}),
-      })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Unable to update user.')
-      }
-
-      const nextUser = payload?.user || { ...(user || {}), ...(patch || {}) }
-      setUser(nextUser)
-      persistSession(token, nextUser)
-      return nextUser
-    } catch (err) {
-      const message = err.message || 'Unable to update user.'
-      setError(message)
-      throw new Error(message)
-    }
-  }, [token, user])
+  }
 
 
   const logout = useCallback(() => {
-    if (hasWindow) {
-      window.localStorage.removeItem('onboarding.profile')
-    }
     persistSession(null, null)
     setToken(null)
     setUser(null)
@@ -159,61 +106,24 @@ export const AuthProvider = ({ children }) => {
 
   const clearError = useCallback(() => setError(null), [])
 
-  useEffect(() => {
-    if (!token || user || isAuthenticating) return
-    let isActive = true
-
-    const hydrateUser = async () => {
-      setIsAuthenticating(true)
-      setError(null)
-      try {
-        const response = await fetch(`${apiBase}/api/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        const payload = await response.json().catch(() => ({}))
-        if (!response.ok) {
-          throw new Error(payload?.error || 'Unable to load session.')
-        }
-        if (!isActive) return
-        setUser(payload.user)
-        persistSession(token, payload.user)
-      } catch (err) {
-        if (!isActive) return
-        persistSession(null, null)
-        setToken(null)
-        setUser(null)
-        setError(err.message || 'Session expired.')
-      } finally {
-        if (isActive) setIsAuthenticating(false)
-      }
-    }
-
-    hydrateUser()
-    return () => {
-      isActive = false
-    }
-  }, [token, user, isAuthenticating])
-
   const value = useMemo(
     () => ({
       token,
       user,
-      isAuthenticated: Boolean(token && user),
+      isAuthenticated: Boolean(token),
       isAuthenticating,
       error,
       login,
-      signup,
-      updateUser,
       logout,
       clearError,
     }),
-    [token, user, isAuthenticating, error, login, signup, updateUser, logout, clearError],
+    [token, user, isAuthenticating, error, login, logout, clearError],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
+
+
 
 export const useAuth = () => {
   const context = useContext(AuthContext)

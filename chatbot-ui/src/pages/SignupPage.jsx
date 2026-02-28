@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
-import { apiBase } from '../utils/api.js'
+import { getDashboardPath, Roles } from '../utils/roles.js'
 
 export default function SignupPage() {
   const { signup, isAuthenticated, isAuthenticating } = useAuth()
@@ -16,6 +16,7 @@ export default function SignupPage() {
     email: '',
     password: '',
     confirmPassword: '',
+    role: Roles.EMPLOYEE,
   })
   const [error, setError] = useState(null)
 
@@ -62,8 +63,14 @@ export default function SignupPage() {
     await signup({
       name: formValues.name,
       email: formValues.email,
-      password: formValues.password
+      password: formValues.password,
+      role: formValues.role,
     })
+
+    if (formValues.role === Roles.MANAGER) {
+      navigate(getDashboardPath(Roles.MANAGER), {replace: true})
+      return
+    }
 
     navigate('/onboarding', {replace: true})
   } catch (err) {
@@ -179,9 +186,26 @@ export default function SignupPage() {
               <p className="font-medium mb-2">Review your details</p>
               <p><span className="font-semibold">Name:</span> {formValues.name}</p>
               <p><span className="font-semibold">Email:</span> {formValues.email}</p>
+              <p><span className="font-semibold">Role:</span> {formValues.role === Roles.MANAGER ? 'Manager' : 'Employee'}</p>
               <p className="mt-2 text-xs text-slate-500">
                 Your password won&apos;t be shown here, but it&apos;ll be securely stored.
               </p>
+            </div>
+
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+                Account role
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={formValues.role}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              >
+                <option value={Roles.EMPLOYEE}>Employee</option>
+                <option value={Roles.MANAGER}>Manager</option>
+              </select>
             </div>
 
             <div className="flex gap-3">

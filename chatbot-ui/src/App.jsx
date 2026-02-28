@@ -14,6 +14,8 @@ import RequireAuth from './components/RequireAuth.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import OnboardingGate from './components/OnboardingGate.jsx'
 import Dashboard from './pages/Dashboard.jsx'
+import ManagerDashboard from './pages/ManagerDashboard.jsx'
+import { Roles } from './utils/roles.js'
 
 function App() {
   return (
@@ -25,16 +27,20 @@ function App() {
 
         <Route element={<RequireAuth />}>
           <Route element={<OnboardingGate />}>
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/greeting" element={<Greeting />} />
-          <Route path="/presenting" element={<Presenting />} />
-          <Route path="/objections" element={<Objections />} />
-          <Route path="/closing" element={<Closing />} />
-          <Route path="/followup" element={<FollowUp />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/greeting" element={<Greeting />} />
+            <Route path="/presenting" element={<Presenting />} />
+            <Route path="/objections" element={<Objections />} />
+            <Route path="/closing" element={<Closing />} />
+            <Route path="/followup" element={<FollowUp />} />
+          </Route>
         </Route>
+
+        <Route element={<RequireAuth roles={[Roles.MANAGER]} />}>
+          <Route path="/manager/dashboard" element={<ManagerDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>

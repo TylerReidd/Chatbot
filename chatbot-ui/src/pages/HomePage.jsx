@@ -1,6 +1,8 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import MenuButton from "../components/MenuButton";
 import { useAuth } from "../hooks/useAuth.jsx";
+import { getDashboardPath } from "../utils/roles.js";
 
 export default function HomePage() {
   const { user, logout } = useAuth();
@@ -9,6 +11,12 @@ export default function HomePage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-white text-center px-4">
       <div className="absolute top-4 right-4 flex items-center space-x-3">
+        <Link
+          to={getDashboardPath(user?.role)}
+          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition"
+        >
+          Back to Dashboard
+        </Link>
         <div className="text-right">
           <p className="text-sm text-gray-500">Signed in as</p>
           <p className="font-semibold text-gray-900">{displayName}</p>

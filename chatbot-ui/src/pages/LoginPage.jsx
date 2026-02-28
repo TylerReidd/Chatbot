@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
+import { getDashboardPath } from '../utils/roles.js'
 
 export default function LoginPage() {
   const { login, isAuthenticated, isAuthenticating, error, user } = useAuth()
@@ -9,7 +10,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const from = location.state?.from?.pathname || '/dashboard'
+  const from = location.state?.from?.pathname || getDashboardPath(user?.role)
 
   if (isAuthenticated) {
     return <Navigate to={from} replace />
@@ -29,7 +30,7 @@ export default function LoginPage() {
         email: formValues.email.trim(),
         password: formValues.password,
       })
-      navigate('/dashboard', { replace: true })
+      navigate(getDashboardPath(payload?.user?.role), { replace: true })
     } catch (err) {
       setLocalError(err.message)
     }
