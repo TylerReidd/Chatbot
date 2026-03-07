@@ -37,7 +37,7 @@ export default function HomePage() {
         <MenuButton label="Presenting" route='/presenting' />
         <MenuButton label="Objection Handling" route='/objections' />
         <MenuButton label="Closing" route='/closing' />
-        <MenuButton label="Follow-Up" route='/followup' />
+        <MenuButton label="Management" route='/followup' />
       </div>
     </main>
     

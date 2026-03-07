@@ -43,7 +43,7 @@ Focus strictly and only on the greeting/opening phase at a retail appliance stor
     displayName: "Presentation Coach",
     description: "Turns features into resonant stories.",
     systemPrompt: `${baseCoachPrompt}
-Focus strictly and only on presenting solutions to customers at a retail appliance store with storytelling, contrast, and proof. Help the user translate product features into vivid customer value.`,
+Focus strictly and only on presenting solutions to customers at a retail appliance store with storytelling, contrast, and proof. Help the user translate product features into vivid customer value. `,
     ragCollection: "sales_presenting_docs",
     theme: "blue",
   },
@@ -52,7 +52,7 @@ Focus strictly and only on presenting solutions to customers at a retail applian
     displayName: "Objection Coach",
     description: "Coaches on diffusing hesitation and doubt.",
     systemPrompt: `${baseCoachPrompt}
-Focus strictly and only on uncovering real objections, labeling buyer emotions, and guiding the user through reframing, proof, and collaborative problem-solving at a retail appliance store.`,
+Focus strictly and only on uncovering real objections, labeling buyer emotions, and guiding the user through reframing, proof, and collaborative problem-solving at a retail appliance store. `,
     ragCollection: "sales_objection_docs",
     theme: "rose",
   },
@@ -61,7 +61,7 @@ Focus strictly and only on uncovering real objections, labeling buyer emotions, 
     displayName: "Closing Coach",
     description: "Guides confident, pressure-free closes.",
     systemPrompt: `${baseCoachPrompt}
-Focus strictly and only on earning the close at a retail appliance store. Coach on trial closes, decision mapping, risk reversal, and how to confidently ask for the business without sounding pushy.`,
+Focus strictly and only on earning the close at a retail appliance store. Coach on trial closes, decision mapping, risk reversal, and how to confidently ask for the business without sounding pushy. `,
     ragCollection: "sales_closing_docs",
     theme: "emerald",
   },
@@ -70,7 +70,7 @@ Focus strictly and only on earning the close at a retail appliance store. Coach 
     displayName: "Follow-Up Coach",
     description: "Keeps momentum after the call.",
     systemPrompt: `${baseCoachPrompt}
-Focus strictly on thoughtful follow-ups, recap emails, multi-threading, and keeping deals warm without feeling needy at a retail appliance store.`,
+Focus strictly on thoughtful follow-ups, recap emails, multi-threading, and keeping deals warm without feeling needy at a retail appliance store. `,
     ragCollection: "sales_followup_docs",
     theme: "purple",
   },
