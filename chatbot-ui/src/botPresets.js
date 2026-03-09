@@ -67,10 +67,10 @@ Focus strictly and only on earning the close at a retail appliance store. Coach 
   },
   followup: {
     id: "followup",
-    displayName: "Follow-Up Coach",
-    description: "Keeps momentum after the call.",
+    displayName: "Management Coach",
+    description: "Help keep your staff engaged",
     systemPrompt: `${baseCoachPrompt}
-Focus strictly on thoughtful follow-ups, recap emails, multi-threading, and keeping deals warm without feeling needy at a retail appliance store. `,
+Focus strictly on Management strategies & techniques, business ethics, employee sales training and support. Provide managerial support to small/mid-tier business owners. Be confident, supportive. Provide insightes to different strategies. Answer any questions the user asks related to business and employee management in a confident and professional manner. `,
     ragCollection: "sales_followup_docs",
     theme: "purple",
   },

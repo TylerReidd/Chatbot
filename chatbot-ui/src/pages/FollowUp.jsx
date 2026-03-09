@@ -6,7 +6,7 @@ export default function FollowUp() {
     <main className="min-h-screen bg-purple-50 py-12 px-4">
       <div className="w-full max-w-6xl mx-auto">
         <header className="text-center max-w-3xl mx-auto">
-          <h1 className="text-4xl font-extrabold text-purple-700">Follow-Up Momentum</h1>
+          <h1 className="text-4xl font-extrabold text-purple-700">Management Momentum</h1>
           <p className="text-lg text-gray-700 mt-2">
             Keep deals warm with thoughtful recaps, layered value, and helpful nudges.
           </p>
@@ -14,7 +14,7 @@ export default function FollowUp() {
 
         <section className="mt-10 grid gap-8 lg:grid-cols-[1.6fr_1fr] items-start">
           <div>
-            <p className="text-gray-500 text-sm mb-3">Your Follow-Up Coach</p>
+            <p className="text-gray-500 text-sm mb-3">Your Management Coach</p>
             <ChatUI preset="followup" variant="embedded" />
           </div>
 

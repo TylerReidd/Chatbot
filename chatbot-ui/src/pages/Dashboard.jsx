@@ -7,7 +7,7 @@ const modules = [
   { id: "presenting", label: "Presenting", short: "PR", status: "completed", accent: "sky" },
   { id: "objections", label: "Objection Handling", short: "OB", status: "in-progress", accent: "indigo" },
   { id: "closing", label: "Closing", short: "CL", status: "in-progress", accent: "emerald" },
-  { id: "followup", label: "Follow-Up", short: "FU", status: "up-next", accent: "slate" },
+  { id: "followup", label: "Management", short: "MG", status: "up-next", accent: "slate" },
 ];
 
 const badges = ["Customer First", "Smooth Closer", "Objection Ninja"];
