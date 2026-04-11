@@ -8,7 +8,7 @@ The repo intentionally keeps local development ergonomics (`vite dev` + local Ex
 
 Copy `.env.example` to `.env` for local use and fill in real values:
 
-```
+```bash
 cp .env.example .env
 ```
 
@@ -16,9 +16,58 @@ Only variables prefixed with `VITE_` are exposed to the browser build; the rest 
 
 - `OPENAI_API_KEY` (required) – API key Render will store securely.
 - `OPENAI_MODEL` (optional) – fallback OpenAI chat model (defaults to `gpt-4o-mini`).
+- `OPENAI_REALTIME_MODEL` (optional) – Realtime voice model for `/api/realtime/session` (defaults to `gpt-realtime`).
+- `OPENAI_REALTIME_TRANSCRIBE_MODEL` (optional) – input transcription model for voice sessions (defaults to `gpt-4o-mini-transcribe`).
 - `ENABLE_RAG` – set to `false` to skip ChromaDB lookups.
 - `CHROMA_*` – host/port/path/SSL flags for your Chroma instance. Leave pointed to `localhost:8000` for local experimentation.
 - `VITE_API_BASE_URL` – optional override for the UI to reach a remote API. When unset it uses `http://localhost:5001` during development and same-origin requests in production.
+
+## Sales roleplay backend
+
+The backend now supports configurable customer personas for sales practice, including OpenAI Realtime voice session creation.
+
+Authenticated endpoints:
+
+- `GET /api/personas` – list built-in personas plus the signed-in user’s custom personas
+- `GET /api/personas/:personaId` – load one persona
+- `POST /api/personas` – create a custom persona
+- `PATCH /api/personas/:personaId` – update a custom persona
+- `DELETE /api/personas/:personaId` – delete a custom persona
+- `POST /api/realtime/session` – mint a short-lived OpenAI Realtime client secret configured for a selected persona
+
+`POST /chat` also accepts an optional `personaId`. When present, the model roleplays as that customer persona instead of using the coaching preset flow.
+
+Example persona create payload:
+
+```json
+{
+  "name": "Luxury Buyer With Time Pressure",
+  "description": "Values premium quality but needs a fast decision.",
+  "scenario": "Buying a full mattress setup before weekend guests arrive.",
+  "industry": "bedding sales",
+  "productFocus": "mattresses and adjustable bases",
+  "difficulty": "hard",
+  "voice": "marin",
+  "temperature": 0.75,
+  "speakingStyle": "Direct, polished, and impatient with vague answers.",
+  "personalityTraits": ["high standards", "busy", "image-conscious"],
+  "objections": ["delivery window", "premium price", "comfort guarantee"],
+  "hiddenGoal": "Wants confidence the premium option is genuinely worth it."
+}
+```
+
+Example realtime session request:
+
+```json
+{
+  "personaId": "skeptical-homeowner",
+  "businessName": "Reid Home Furnishings",
+  "salesObjective": "Practice discovery and objection handling on a kitchen package",
+  "voice": "cedar",
+  "speed": 1,
+  "expiresAfterSeconds": 600
+}
+```
 
 ## Local development workflow
 

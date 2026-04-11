@@ -11,6 +11,15 @@ import { login } from './controllers/login.js'
 import { signup } from './controllers/signup.js'
 import { updateMe } from './controllers/updateMe.js'
 import { addEmployeeByEmail, assignCourse, getManagedEmployees } from './controllers/manager.js'
+import {
+  buildPersonaInstructions,
+  createSalesPersona,
+  deleteSalesPersona,
+  getSalesPersona,
+  listSalesPersonas,
+  resolvePersonaForUser,
+  updateSalesPersona,
+} from './controllers/salesPersonas.js'
 import { authenticate, requireRole } from './middleware/auth.js'
 import { UserRoles } from './models/User.js'
 import path from 'path'
@@ -28,6 +37,9 @@ const client = new ChromaClient({
 })
 const FALLBACK_COLLECTION = 'sales_docs'
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+const OPENAI_REALTIME_MODEL = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime'
+const OPENAI_REALTIME_TRANSCRIBE_MODEL =
+  process.env.OPENAI_REALTIME_TRANSCRIBE_MODEL || 'gpt-4o-mini-transcribe'
 const ENABLE_RAG = process.env.ENABLE_RAG !== 'false'
 const PORT = process.env.PORT || 5001
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/chatbot'
@@ -84,6 +96,42 @@ const getContext = async (presetConfig, latestUserMsg, ragOptions = {}) => {
   }
 }
 
+const trimString = (value, fallback = '') =>
+  typeof value === 'string' ? value.trim() || fallback : fallback
+
+const normalizeVoiceSpeed = (value, fallback = 1) => {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) return fallback
+  return Math.min(Math.max(numericValue, 0.25), 1.5)
+}
+
+const buildPersonaChatMessages = async ({ personaId, user, messages, businessName, salesObjective }) => {
+  const persona = await resolvePersonaForUser(personaId, user._id)
+  if (!persona) {
+    const error = new Error('Sales persona not found.')
+    error.status = 404
+    throw error
+  }
+
+  return {
+    persona,
+    messages: [
+      {
+        role: 'system',
+        content: buildPersonaInstructions(persona, {
+          sellerName: user.name,
+          businessName,
+          salesObjective,
+        }),
+      },
+      ...messages.map((message) => ({
+        role: message.sender === 'user' ? 'user' : 'assistant',
+        content: message.text,
+      })),
+    ],
+  }
+}
+
 app.post("/api/rag", async (req,res) => {
   const {query, preset = defaultPresetId} = req.body
   const presetConfig = resolvePreset(preset)
@@ -113,40 +161,144 @@ app.post("/api/rag", async (req,res) => {
 
 app.post("/chat", authenticate, async (req,res) => {
   try {
-    const { preset = defaultPresetId, messages: userMessages = [], rag } = req.body
-    const presetConfig = resolvePreset(preset)
-    const ragOptions = normalizeRagOptions(presetConfig, rag)
+    const {
+      preset = defaultPresetId,
+      personaId,
+      messages: userMessages = [],
+      rag,
+      businessName,
+      salesObjective,
+    } = req.body
 
-    const latestUserMsg = userMessages.filter((m) => m.sender === "user").pop()?.text || ""
+    let completion
+    let responsePreset = preset
+    let responsePersonaId = null
 
-    const context = await getContext(presetConfig, latestUserMsg, ragOptions)
+    if (personaId) {
+      const personaChat = await buildPersonaChatMessages({
+        personaId,
+        user: req.user,
+        messages: userMessages,
+        businessName,
+        salesObjective,
+      })
 
-    const completion = await openai.chat.completions.create({
-      model: presetConfig.model || OPENAI_MODEL,
-      temperature: presetConfig.temperature ?? 0.7,
-      messages: [
-        {role: "system", content: presetConfig.systemPrompt},
-        {role: "system", content: `Relevant knowledge base context:\n${context}`},
-        ...userMessages.map((m) => ({
-          role: m.sender === "user" ? "user" : "assistant",
-          content: m.text,
-        })),
-      ],
-    })
+      completion = await openai.chat.completions.create({
+        model: OPENAI_MODEL,
+        temperature: personaChat.persona.temperature ?? 0.8,
+        messages: personaChat.messages,
+      })
 
-    console.log(`✅ Sent to OpenAI (${presetConfig.displayName}), waiting for reply...`)
+      responsePreset = null
+      responsePersonaId = personaChat.persona.id
+      console.log(`✅ Sent to OpenAI (persona ${personaChat.persona.name}), waiting for reply...`)
+    } else {
+      const presetConfig = resolvePreset(preset)
+      const ragOptions = normalizeRagOptions(presetConfig, rag)
+      const latestUserMsg = userMessages.filter((m) => m.sender === "user").pop()?.text || ""
+      const context = await getContext(presetConfig, latestUserMsg, ragOptions)
+
+      completion = await openai.chat.completions.create({
+        model: presetConfig.model || OPENAI_MODEL,
+        temperature: presetConfig.temperature ?? 0.7,
+        messages: [
+          {role: "system", content: presetConfig.systemPrompt},
+          {role: "system", content: `Relevant knowledge base context:\n${context}`},
+          ...userMessages.map((m) => ({
+            role: m.sender === "user" ? "user" : "assistant",
+            content: m.text,
+          })),
+        ],
+      })
+
+      console.log(`✅ Sent to OpenAI (${presetConfig.displayName}), waiting for reply...`)
+    }
+
     res.json({
-      preset: presetConfig.id,
+      preset: responsePreset,
+      personaId: responsePersonaId,
       choices: completion.choices,
-      rag: {
-        enabled: ragOptions.enabled,
-        collection: ragOptions.collectionName || FALLBACK_COLLECTION,
-        topK: ragOptions.topK,
-      },
     })
   } catch (error) {
     console.error("Chat error:", error)
-    res.status(500).json({error: "Chat processing failed", details: error.message})
+    res
+      .status(error.status || 500)
+      .json({error: "Chat processing failed", details: error.message})
+  }
+})
+
+app.get('/api/personas', authenticate, listSalesPersonas)
+app.get('/api/personas/:personaId', authenticate, getSalesPersona)
+app.post('/api/personas', authenticate, createSalesPersona)
+app.patch('/api/personas/:personaId', authenticate, updateSalesPersona)
+app.delete('/api/personas/:personaId', authenticate, deleteSalesPersona)
+
+app.post('/api/realtime/session', authenticate, async (req, res) => {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'OPENAI_API_KEY is not configured.' })
+    }
+
+    const persona = await resolvePersonaForUser(req.body?.personaId, req.user._id)
+    if (!persona) {
+      return res.status(404).json({ error: 'Sales persona not found.' })
+    }
+
+    const voice = trimString(req.body?.voice, persona.voice || 'alloy')
+    const speed = normalizeVoiceSpeed(req.body?.speed, 1)
+    const businessName = trimString(req.body?.businessName)
+    const salesObjective = trimString(req.body?.salesObjective)
+    const expiresAfterSeconds = Math.min(
+      Math.max(Number(req.body?.expiresAfterSeconds) || 600, 10),
+      7200
+    )
+
+    const session = await openai.realtime.clientSecrets.create({
+      expires_after: {
+        anchor: 'created_at',
+        seconds: expiresAfterSeconds,
+      },
+      session: {
+        type: 'realtime',
+        model: OPENAI_REALTIME_MODEL,
+        instructions: buildPersonaInstructions(persona, {
+          sellerName: req.user.name,
+          businessName,
+          salesObjective,
+        }),
+        audio: {
+          input: {
+            turn_detection: {
+              type: 'server_vad',
+              create_response: true,
+              interrupt_response: true,
+            },
+            transcription: {
+              model: OPENAI_REALTIME_TRANSCRIBE_MODEL,
+            },
+          },
+          output: {
+            voice,
+            speed,
+          },
+        },
+      },
+    })
+
+    return res.status(201).json({
+      session,
+      persona,
+      defaults: {
+        realtimeModel: OPENAI_REALTIME_MODEL,
+        transcriptionModel: OPENAI_REALTIME_TRANSCRIBE_MODEL,
+      },
+    })
+  } catch (error) {
+    console.error('Realtime session error:', error)
+    return res.status(500).json({
+      error: 'Unable to create realtime session.',
+      details: error.message,
+    })
   }
 })
 

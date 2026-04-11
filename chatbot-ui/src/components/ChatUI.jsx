@@ -134,12 +134,13 @@ export default function ChatUI({
     }
   };
 
-  const embeddedDimensions = "w-full min-h-[540px] lg:min-h-[620px] max-h-[85vh]";
-  const standaloneDimensions = "w-[700px] h-[900px]";
+  const embeddedDimensions =
+    "w-full min-h-[480px] sm:min-h-[540px] lg:min-h-[620px] max-h-[80svh] sm:max-h-[85svh]";
+  const standaloneDimensions = "w-full max-w-[700px] min-h-[70svh] sm:min-h-[760px] sm:h-[900px]";
 
   const panel = (
     <div
-      className={`bg-white shadow-xl rounded-2xl flex flex-col ${
+      className={`w-full overflow-hidden bg-white shadow-xl rounded-2xl flex flex-col ${
         isStandalone ? standaloneDimensions : embeddedDimensions
       }`}
     >
@@ -154,7 +155,7 @@ export default function ChatUI({
         </div>
       )}
       <div
-        className={`${theme.header} p-4 ${isStandalone ? "rounded-t-2xl" : "mt-3 mx-4 rounded-t-xl"} text-lg font-semibold flex items-center justify-between`}
+          className={`${theme.header} p-4 ${isStandalone ? "rounded-t-2xl" : "mt-3 mx-4 rounded-t-xl"} text-base sm:text-lg font-semibold flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between`}
       >
         <span>{title || presetConfig.displayName}</span>
         <span className="text-xs font-normal opacity-80">
@@ -164,7 +165,7 @@ export default function ChatUI({
       <div className={`${isStandalone ? "px-4" : "px-4 mx-4"} py-2 text-sm text-gray-500 border-b`}>
         {presetConfig.description}
       </div>
-      <div className={`flex-1 overflow-y-auto ${isStandalone ? "p-4" : "px-4 mx-4 py-4"} space-y-3`}>
+      <div className={`min-h-0 flex-1 overflow-y-auto ${isStandalone ? "p-4" : "px-4 mx-4 py-4"} space-y-3`}>
         {messages.map((msg, i) => (
           <div
             key={`${msg.sender}-${i}`}
@@ -173,7 +174,7 @@ export default function ChatUI({
             }`}
           >
             <div
-              className={`px-4 py-2 rounded-2xl max-w-[95%] text-[18px] leading-relaxed ${
+              className={`px-4 py-2 rounded-2xl max-w-[95%] text-base sm:text-[18px] leading-relaxed ${
                 msg.sender === "user"
                   ? theme.userBubble
                   : "bg-gray-100 text-gray-900"
@@ -211,9 +212,9 @@ export default function ChatUI({
           </div>
         ))}
       </div>
-      <div className={`${isStandalone ? "p-3" : "p-3 mx-4 mb-4"} border-t flex items-center space-x-2`}>
+      <div className={`${isStandalone ? "p-3" : "p-3 mx-4 mb-4"} border-t flex flex-col gap-2 sm:flex-row sm:items-center`}>
         <input
-          className={`flex-1 border rounded-xl px-3 py-2 text-md focus:outline-none focus:ring-2 ${theme.focus}`}
+          className={`w-full flex-1 border rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focus}`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={`Ask your ${presetConfig.displayName}...`}
@@ -229,7 +230,7 @@ export default function ChatUI({
         <button
           onClick={handleSend}
           disabled={isSending}
-          className={`${theme.button} text-white px-4 py-2 rounded-xl font-medium transition disabled:opacity-60 disabled:cursor-not-allowed`}
+          className={`${theme.button} w-full sm:w-auto text-white px-4 py-2 rounded-xl font-medium transition disabled:opacity-60 disabled:cursor-not-allowed`}
         >
           {isSending ? "Sending..." : "Send"}
         </button>
@@ -240,7 +241,7 @@ export default function ChatUI({
   if (isStandalone) {
     return (
       <div
-        className={`min-h-screen bg-linear-to-br ${theme.gradient} flex items-center justify-center p-4 ${className}`}
+        className={`min-h-[100svh] bg-linear-to-br ${theme.gradient} flex items-center justify-center p-3 sm:p-4 ${className}`}
       >
         {panel}
       </div>

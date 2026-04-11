@@ -95,31 +95,31 @@ export default function ManagerDashboard() {
   };
 
   return (
-    <main className="relative min-h-screen h-screen bg-slate-50 px-6 py-12 md:px-10 lg:px-14">
+    <main className="relative min-h-[100svh] bg-slate-50 px-4 py-6 sm:px-6 sm:py-8 md:px-10 md:py-12 lg:px-14">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-indigo-100/80 blur-3xl" />
         <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-emerald-100/70 blur-3xl" />
       </div>
 
-      <div className="relative h-full w-full">
-        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="relative w-full">
+        <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-base uppercase tracking-[0.18em] text-slate-400">Manager Dashboard</p>
-            <h1 className="mt-2 text-4xl font-semibold text-slate-900">
+            <h1 className="mt-2 text-3xl font-semibold text-slate-900 sm:text-4xl">
               Welcome back, {displayName}.
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={logout}
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
+              className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 sm:w-auto"
             >
               Log out
             </button>
             <Link
               to="/home"
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800"
+              className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto"
             >
               Open Coach
             </Link>
@@ -133,12 +133,12 @@ export default function ManagerDashboard() {
         ) : null}
 
         <div className="grid gap-6 md:grid-cols-2 lg:gap-8">
-          <section className="rounded-3xl border border-slate-200/80 bg-white/90 p-8 shadow-sm backdrop-blur">
+          <section className="min-w-0 rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur sm:p-8">
             <h2 className="text-xl font-semibold text-slate-900">Add employee by email</h2>
             <p className="mt-1 text-base text-slate-500">
               Attach an existing employee account to your team.
             </p>
-            <form className="mt-5 flex gap-3" onSubmit={handleAddEmployee}>
+            <form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={handleAddEmployee}>
               <input
                 type="email"
                 required
@@ -156,10 +156,10 @@ export default function ManagerDashboard() {
             </form>
           </section>
 
-          <section className="rounded-3xl border border-slate-200/80 bg-white/90 p-8 shadow-sm backdrop-blur">
+          <section className="min-w-0 rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur sm:p-8">
             <h2 className="text-xl font-semibold text-slate-900">Assign course to all employees</h2>
             <p className="mt-1 text-base text-slate-500">Roll out one course to your full roster.</p>
-            <form className="mt-5 flex gap-3" onSubmit={handleAssignAll}>
+            <form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={handleAssignAll}>
               <input
                 type="text"
                 required
@@ -178,8 +178,8 @@ export default function ManagerDashboard() {
           </section>
         </div>
 
-        <section className="mt-8 rounded-3xl border border-slate-200/80 bg-white/90 p-8 shadow-sm backdrop-blur">
-          <div className="flex items-center justify-between">
+        <section className="mt-8 rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur sm:p-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-semibold text-slate-900">Team roster</h2>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-base font-semibold text-slate-600">
               {employees.length} employees
@@ -202,7 +202,7 @@ export default function ManagerDashboard() {
                       <p className="text-base font-semibold text-slate-800">{employee.name}</p>
                       <p className="text-sm text-slate-500">{employee.email}</p>
                     </div>
-                    <div className="flex w-full gap-2 md:w-auto">
+                    <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
                       <input
                         type="text"
                         value={courseDrafts[employee._id] || ""}

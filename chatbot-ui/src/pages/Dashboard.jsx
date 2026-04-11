@@ -23,36 +23,36 @@ export default function Dashboard() {
   const progressPercent = Math.round((completedCount / modules.length) * 100);
 
   return (
-    <main className="relative min-h-screen h-screen bg-slate-50 px-6 py-12 md:px-10 lg:px-14">
+    <main className="relative min-h-[100svh] bg-slate-50 px-4 py-6 sm:px-6 sm:py-8 md:px-10 md:py-12 lg:px-14">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-sky-100/80 blur-3xl" />
         <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-amber-100/70 blur-3xl" />
       </div>
-      <div className="relative h-full w-full">
-        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="relative w-full">
+        <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-base uppercase tracking-[0.18em] text-slate-400">Sales Coach Dashboard</p>
-            <h1 className="mt-2 text-4xl font-semibold text-slate-900">Welcome back, {displayName}.</h1>
+            <h1 className="mt-2 text-3xl font-semibold text-slate-900 sm:text-4xl">Welcome back, {displayName}.</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={logout}
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
+              className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 sm:w-auto"
             >
               Log out
             </button>
             <Link
               to="/home"
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800"
+              className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto"
             >
               Start Coaching
             </Link>
           </div>
         </div>
 
-        <div className="grid flex-1 gap-6 md:grid-cols-2 lg:gap-8">
-          <section className="rounded-3xl border border-slate-200/80 bg-white/90 p-8 shadow-sm backdrop-blur">
+        <div className="grid gap-6 md:grid-cols-2 lg:gap-8">
+          <section className="min-w-0 rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur sm:p-8">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">Completed modules</h2>
@@ -108,8 +108,8 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-slate-200/80 bg-white/90 p-8 shadow-sm backdrop-blur">
-            <div className="rounded-2xl bg-linear-to-r from-slate-900 via-slate-800 to-slate-700 p-5 text-white">
+          <section className="min-w-0 rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur sm:p-8">
+            <div className="rounded-2xl bg-linear-to-r from-slate-900 via-slate-800 to-slate-700 p-4 text-white sm:p-5">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-200">Tip of the Day</p>
               <h2 className="mt-2 text-2xl font-semibold">
                 Lead with curiosity, then offer two clear options.
@@ -128,7 +128,7 @@ export default function Dashboard() {
                 {modules.map((module) => (
                   <div
                     key={module.id}
-                    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                    className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex items-center gap-3">
                       <div

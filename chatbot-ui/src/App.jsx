@@ -7,6 +7,7 @@ import Presenting from './pages/Presenting'
 import Objections from './pages/Objections'
 import Closing from './pages/Closing'
 import FollowUp from './pages/FollowUp'
+import Practice from './pages/Practice.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import Unauthorized from './pages/Unauthorized.jsx'
@@ -36,6 +37,7 @@ function App() {
             <Route path="/objections" element={<Objections />} />
             <Route path="/closing" element={<Closing />} />
             <Route path="/followup" element={<FollowUp />} />
+            <Route path="/practice" element={<Practice />} />
           </Route>
         </Route>
 
