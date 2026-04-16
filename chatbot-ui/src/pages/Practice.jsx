@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { botPresets, defaultPresetId, resolvePreset } from '../botPresets'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { apiBase } from '../utils/api.js'
 import { getDashboardPath } from '../utils/roles.js'
 
-const introPrompt =
+const coachIntroPrompt =
+  'Begin the coaching session now. Greet me first as a live sales coach with a short natural opening line.'
+
+const customerIntroPrompt =
   'Begin the roleplay now. Greet me first as the customer with a short natural opening line.'
 
-const parseRealtimeEvent = (event) => {
+const customerResponseGuardrail =
+  'Stay in customer role. The user is the salesperson. Do not switch to salesperson, coach, or narrator. If the user asks for feedback, answer only from the customer perspective and continue the roleplay.'
+
+const parseRealtimeEvent = (event, assistantLabel) => {
   if (event.type === 'response.audio_transcript.done' && event.transcript) {
-    return { speaker: 'customer', text: event.transcript }
+    return { speaker: assistantLabel, text: event.transcript }
   }
 
   if (
@@ -20,21 +27,25 @@ const parseRealtimeEvent = (event) => {
   }
 
   if (event.type === 'response.text.done' && event.text) {
-    return { speaker: 'customer', text: event.text }
+    return { speaker: assistantLabel, text: event.text }
   }
 
   return null
 }
 
+const coachPresets = Object.values(botPresets)
+
 export default function Practice() {
   const { token, user, logout } = useAuth()
+  const [mode, setMode] = useState('coach')
   const [personas, setPersonas] = useState([])
   const [selectedPersonaId, setSelectedPersonaId] = useState('')
+  const [selectedPresetId, setSelectedPresetId] = useState(defaultPresetId)
   const [businessName, setBusinessName] = useState('Reid Home Furnishings')
   const [salesObjective, setSalesObjective] = useState(
     'Practice discovery, objection handling, and a clean close.'
   )
-  const [status, setStatus] = useState('Loading personas...')
+  const [status, setStatus] = useState('Loading practice options...')
   const [error, setError] = useState('')
   const [isLoadingPersonas, setIsLoadingPersonas] = useState(true)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -45,6 +56,10 @@ export default function Practice() {
   const dataChannelRef = useRef(null)
   const localStreamRef = useRef(null)
   const remoteAudioRef = useRef(null)
+  const assistantLabelRef = useRef('coach')
+
+  const selectedPersona = personas.find((persona) => persona.id === selectedPersonaId) ?? null
+  const selectedPreset = resolvePreset(selectedPresetId)
 
   useEffect(() => {
     if (!token) return undefined
@@ -71,11 +86,11 @@ export default function Practice() {
         const nextPersonas = Array.isArray(payload.personas) ? payload.personas : []
         setPersonas(nextPersonas)
         setSelectedPersonaId((currentId) => currentId || nextPersonas[0]?.id || '')
-        setStatus(nextPersonas.length ? 'Pick a persona and start voice practice.' : 'No personas found.')
+        setStatus('Choose sales coach or customer mode, then start voice practice.')
       } catch (err) {
         if (ignore) return
         setError(err.message || 'Unable to load personas.')
-        setStatus('Could not load personas.')
+        setStatus('Could not load practice options.')
       } finally {
         if (!ignore) setIsLoadingPersonas(false)
       }
@@ -109,6 +124,21 @@ export default function Practice() {
       localStreamRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    if (isConnected || isConnecting) return
+
+    if (mode === 'coach') {
+      setStatus(`Ready to start live coaching with the ${selectedPreset.displayName}.`)
+      return
+    }
+
+    setStatus(
+      selectedPersona
+        ? `Ready to roleplay with ${selectedPersona.name}.`
+        : 'Choose a customer persona to start roleplay.'
+    )
+  }, [mode, selectedPersona, selectedPreset, isConnected, isConnecting])
 
   const appendLog = (speaker, text) => {
     if (!text) return
@@ -152,13 +182,17 @@ export default function Practice() {
   }
 
   const startPracticeSession = async () => {
-    if (!token || !selectedPersonaId || isConnecting) return
+    if (!token || isConnecting) return
+    if (mode === 'customer' && !selectedPersonaId) return
 
     disconnectSession()
     setIsConnecting(true)
     setError('')
     setActivityLog([])
-    setStatus('Creating realtime voice session...')
+
+    const isCoachMode = mode === 'coach'
+    assistantLabelRef.current = isCoachMode ? 'coach' : 'customer'
+    setStatus(isCoachMode ? 'Creating live sales coach session...' : 'Creating customer roleplay session...')
 
     try {
       const sessionResponse = await fetch(`${apiBase}/api/realtime/session`, {
@@ -168,7 +202,9 @@ export default function Practice() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          personaId: selectedPersonaId,
+          mode,
+          preset: isCoachMode ? selectedPresetId : null,
+          personaId: isCoachMode ? null : selectedPersonaId,
           businessName,
           salesObjective,
         }),
@@ -200,7 +236,11 @@ export default function Practice() {
         if (state === 'connected') {
           setIsConnected(true)
           setIsConnecting(false)
-          setStatus('Live. Speak naturally to the selected customer persona.')
+          setStatus(
+            isCoachMode
+              ? `Live. Speak naturally with the ${selectedPreset.displayName}.`
+              : `Live. Speak naturally to ${selectedPersona?.name || 'the selected customer persona'}.`
+          )
         } else if (state === 'failed' || state === 'disconnected' || state === 'closed') {
           setIsConnected(false)
           setIsConnecting(false)
@@ -229,7 +269,7 @@ export default function Practice() {
               content: [
                 {
                   type: 'input_text',
-                  text: introPrompt,
+                  text: isCoachMode ? coachIntroPrompt : customerIntroPrompt,
                 },
               ],
             },
@@ -239,6 +279,11 @@ export default function Practice() {
         dataChannel.send(
           JSON.stringify({
             type: 'response.create',
+            response: !isCoachMode
+              ? {
+                  instructions: customerResponseGuardrail,
+                }
+              : undefined,
           })
         )
       })
@@ -246,7 +291,7 @@ export default function Practice() {
       dataChannel.addEventListener('message', (messageEvent) => {
         try {
           const event = JSON.parse(messageEvent.data)
-          const transcriptEntry = parseRealtimeEvent(event)
+          const transcriptEntry = parseRealtimeEvent(event, assistantLabelRef.current)
           if (transcriptEntry) {
             appendLog(transcriptEntry.speaker, transcriptEntry.text)
           }
@@ -286,18 +331,15 @@ export default function Practice() {
     }
   }
 
-  const selectedPersona = personas.find((persona) => persona.id === selectedPersonaId)
-
   return (
-    <main className="min-h-[100svh] bg-linear-to-br from-stone-100 via-white to-sky-50 px-4 py-5 sm:py-8 text-slate-900">
+    <main className="min-h-svh bg-linear-to-br from-stone-100 via-white to-sky-50 px-4 py-5 sm:py-8 text-slate-900">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6 md:mb-8 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 flex flex-col gap-4 rounded-4xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6 md:mb-8 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Realtime Practice</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900 sm:text-4xl">Voice roleplay lab</h1>
+            <h1 className="mt-2 text-3xl font-semibold text-slate-900 sm:text-4xl">Voice practice lab</h1>
             <p className="mt-2 max-w-2xl text-base text-slate-600">
-              Practice live sales conversations with configurable customer personas powered by the
-              OpenAI Realtime API.
+              Choose whether you want live coaching from a sales coach or a customer roleplay session.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -324,7 +366,7 @@ export default function Practice() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
-          <section className="min-w-0 rounded-[2rem] border border-slate-200 bg-white/95 p-5 shadow-sm sm:p-6">
+          <section className="min-w-0 rounded-4xl border border-slate-200 bg-white/95 p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-xl font-semibold text-slate-900">Session setup</h2>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
@@ -333,21 +375,69 @@ export default function Practice() {
             </div>
 
             <div className="mt-5 space-y-4">
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Customer persona</span>
-                <select
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-800 outline-none transition focus:border-slate-500"
-                  value={selectedPersonaId}
-                  onChange={(event) => setSelectedPersonaId(event.target.value)}
-                  disabled={isConnecting || isConnected || isLoadingPersonas}
-                >
-                  {personas.map((persona) => (
-                    <option key={persona.id} value={persona.id}>
-                      {persona.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div>
+                <span className="mb-2 block text-sm font-semibold text-slate-700">Conversation mode</span>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setMode('coach')}
+                    disabled={isConnecting || isConnected}
+                    className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
+                      mode === 'coach'
+                        ? 'border-slate-900 bg-slate-900 text-white'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    Sales Coach
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('customer')}
+                    disabled={isConnecting || isConnected || isLoadingPersonas}
+                    className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
+                      mode === 'customer'
+                        ? 'border-sky-600 bg-sky-600 text-white'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    Customer Persona
+                  </button>
+                </div>
+              </div>
+
+              {mode === 'coach' ? (
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-slate-700">Coach mode</span>
+                  <select
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-800 outline-none transition focus:border-slate-500"
+                    value={selectedPresetId}
+                    onChange={(event) => setSelectedPresetId(event.target.value)}
+                    disabled={isConnecting || isConnected}
+                  >
+                    {coachPresets.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-slate-700">Customer persona</span>
+                  <select
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-800 outline-none transition focus:border-slate-500"
+                    value={selectedPersonaId}
+                    onChange={(event) => setSelectedPersonaId(event.target.value)}
+                    disabled={isConnecting || isConnected || isLoadingPersonas}
+                  >
+                    {personas.map((persona) => (
+                      <option key={persona.id} value={persona.id}>
+                        {persona.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-slate-700">Business name</span>
@@ -370,34 +460,52 @@ export default function Practice() {
               </label>
             </div>
 
-            {selectedPersona && (
-              <div className="mt-6 rounded-[1.5rem] bg-slate-50 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  Persona summary
-                </p>
-                <h3 className="mt-2 text-lg font-semibold text-slate-900">{selectedPersona.name}</h3>
-                <p className="mt-2 text-sm text-slate-600">{selectedPersona.description}</p>
-                <div className="mt-4 grid gap-3 text-sm text-slate-600">
+            <div className="mt-6 rounded-3xl bg-slate-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                {mode === 'coach' ? 'Coach summary' : 'Persona summary'}
+              </p>
+              <h3 className="mt-2 text-lg font-semibold text-slate-900">
+                {mode === 'coach' ? selectedPreset.displayName : selectedPersona?.name || 'No persona selected'}
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                {mode === 'coach'
+                  ? selectedPreset.description
+                  : selectedPersona?.description || 'Choose a persona to see the roleplay summary.'}
+              </p>
+              <div className="mt-4 grid gap-3 text-sm text-slate-600">
+                {mode === 'coach' ? (
                   <p>
-                    <span className="font-semibold text-slate-800">Scenario:</span>{' '}
-                    {selectedPersona.scenario || 'No scenario provided.'}
+                    <span className="font-semibold text-slate-800">Focus:</span> {selectedPreset.displayName}
                   </p>
-                  <p>
-                    <span className="font-semibold text-slate-800">Difficulty:</span>{' '}
-                    {selectedPersona.difficulty}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-slate-800">Voice:</span> {selectedPersona.voice}
-                  </p>
-                </div>
+                ) : (
+                  <>
+                    <p>
+                      <span className="font-semibold text-slate-800">Scenario:</span>{' '}
+                      {selectedPersona?.scenario || 'No scenario provided.'}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-slate-800">Difficulty:</span>{' '}
+                      {selectedPersona?.difficulty || 'n/a'}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-slate-800">Voice:</span>{' '}
+                      {selectedPersona?.voice || 'alloy'}
+                    </p>
+                  </>
+                )}
               </div>
-            )}
+            </div>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={startPracticeSession}
-                disabled={!selectedPersonaId || isLoadingPersonas || isConnecting || isConnected}
+                disabled={
+                  isLoadingPersonas ||
+                  isConnecting ||
+                  isConnected ||
+                  (mode === 'customer' && !selectedPersonaId)
+                }
                 className="flex-1 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isConnecting ? 'Connecting...' : isConnected ? 'Connected' : 'Start Practice'}
@@ -420,12 +528,12 @@ export default function Practice() {
             )}
           </section>
 
-          <section className="min-w-0 rounded-[2rem] border border-slate-200 bg-white/95 p-5 shadow-sm sm:p-6">
+          <section className="min-w-0 rounded-4xl border border-slate-200 bg-white/95 p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">Conversation activity</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Live transcripts appear here as you and the persona speak.
+                  Live transcripts appear here as you and the selected voice mode speak.
                 </p>
               </div>
               <div className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">
@@ -433,28 +541,28 @@ export default function Practice() {
               </div>
             </div>
 
-            <div className="mt-5 rounded-[1.5rem] bg-slate-950 p-5 text-slate-100">
+            <div className="mt-5 rounded-3xl bg-slate-950 p-5 text-slate-100">
               <p className="text-sm text-slate-300">
                 Signed in as <span className="font-semibold text-white">{user?.name || user?.email}</span>
               </p>
               <p className="mt-2 text-sm text-slate-400">
-                The session starts with the persona greeting first. Use Chrome or another modern browser
-                and allow microphone access when prompted.
+                The session starts with the {mode === 'coach' ? 'coach' : 'customer'} greeting first. Use Chrome or another modern browser and allow microphone access when prompted.
               </p>
             </div>
 
             <div className="mt-5 space-y-3">
               {activityLog.length === 0 ? (
-                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
-                  No transcript yet. Start a practice session to begin voice roleplay.
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                  No transcript yet. Start a practice session to begin voice coaching or roleplay.
                 </div>
               ) : (
                 activityLog.map((entry) => (
                   <div
                     key={entry.id}
                     className={[
-                      'rounded-[1.5rem] px-5 py-4 text-sm shadow-sm',
+                      'rounded-3xl px-5 py-4 text-sm shadow-sm',
                       entry.speaker === 'customer' && 'bg-sky-50 text-slate-800',
+                      entry.speaker === 'coach' && 'bg-violet-50 text-slate-800',
                       entry.speaker === 'you' && 'bg-amber-50 text-slate-800',
                       entry.speaker === 'system' && 'bg-slate-100 text-slate-600',
                     ]

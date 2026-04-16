@@ -105,6 +105,28 @@ const normalizeVoiceSpeed = (value, fallback = 1) => {
   return Math.min(Math.max(numericValue, 0.25), 1.5)
 }
 
+const buildRealtimeCoachInstructions = ({ presetConfig, businessName, salesObjective }) => {
+  const businessContext = trimString(
+    businessName,
+    'a family-run appliance, furniture, and bedding store'
+  )
+  const sessionObjective = trimString(
+    salesObjective,
+    'Coach the seller through practical retail conversations in real time.'
+  )
+
+  return `${presetConfig.systemPrompt}
+
+Voice session rules:
+- You are speaking live to a salesperson, not chatting over text.
+- Keep responses concise and natural for conversation.
+- Ask one focused follow-up question at a time when you need context.
+- Sound like a confident sales coach, not a customer.
+- Give clear, practical coaching tied to ${businessContext}.
+
+Session objective: ${sessionObjective}`
+}
+
 const buildPersonaChatMessages = async ({ personaId, user, messages, businessName, salesObjective }) => {
   const persona = await resolvePersonaForUser(personaId, user._id)
   if (!persona) {
@@ -239,19 +261,36 @@ app.post('/api/realtime/session', authenticate, async (req, res) => {
       return res.status(500).json({ error: 'OPENAI_API_KEY is not configured.' })
     }
 
-    const persona = await resolvePersonaForUser(req.body?.personaId, req.user._id)
-    if (!persona) {
+    const mode = trimString(req.body?.mode, 'customer').toLowerCase() === 'coach' ? 'coach' : 'customer'
+    const presetConfig = resolvePreset(req.body?.preset)
+    const businessName = trimString(req.body?.businessName)
+    const salesObjective = trimString(req.body?.salesObjective)
+    const persona = mode === 'customer'
+      ? await resolvePersonaForUser(req.body?.personaId, req.user._id)
+      : null
+
+    if (mode === 'customer' && !persona) {
       return res.status(404).json({ error: 'Sales persona not found.' })
     }
 
-    const voice = trimString(req.body?.voice, persona.voice || 'alloy')
+    const voice = trimString(req.body?.voice, persona?.voice || 'alloy')
     const speed = normalizeVoiceSpeed(req.body?.speed, 1)
-    const businessName = trimString(req.body?.businessName)
-    const salesObjective = trimString(req.body?.salesObjective)
     const expiresAfterSeconds = Math.min(
       Math.max(Number(req.body?.expiresAfterSeconds) || 600, 10),
       7200
     )
+    const instructions =
+      mode === 'coach'
+        ? buildRealtimeCoachInstructions({
+            presetConfig,
+            businessName,
+            salesObjective,
+          })
+        : buildPersonaInstructions(persona, {
+            sellerName: req.user.name,
+            businessName,
+            salesObjective,
+          })
 
     const session = await openai.realtime.clientSecrets.create({
       expires_after: {
@@ -261,11 +300,7 @@ app.post('/api/realtime/session', authenticate, async (req, res) => {
       session: {
         type: 'realtime',
         model: OPENAI_REALTIME_MODEL,
-        instructions: buildPersonaInstructions(persona, {
-          sellerName: req.user.name,
-          businessName,
-          salesObjective,
-        }),
+        instructions,
         audio: {
           input: {
             turn_detection: {
@@ -287,6 +322,9 @@ app.post('/api/realtime/session', authenticate, async (req, res) => {
 
     return res.status(201).json({
       session,
+      mode,
+      preset: mode === 'coach' ? presetConfig.id : null,
+      presetDisplayName: mode === 'coach' ? presetConfig.displayName : null,
       persona,
       defaults: {
         realtimeModel: OPENAI_REALTIME_MODEL,
