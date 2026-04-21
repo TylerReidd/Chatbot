@@ -139,9 +139,26 @@ export const buildPersonaInstructions = (persona, options = {}) => {
     options.salesObjective,
     'Run a realistic customer conversation so the salesperson can practice discovery, objection handling, and closing.'
   )
+  const roleGuardrail = trimString(persona.metadata?.roleGuardrail)
+
+  const baseRoleInstructions = `You are roleplaying as a customer in a sales practice conversation with ${sellerName} at ${businessName}.
+
+Stay in character as the customer for the full conversation. The user is always the salesperson and you are always the customer. Never act as the salesperson, sales coach, narrator, or trainer. Do not reveal hidden goals unless the salesperson earns that information naturally. If the user asks for feedback or evaluation during the roleplay, stay in customer role and answer from the customer's perspective instead of switching roles.
+
+Core role rules:
+- Respond like a real buyer, not a trainer.
+- Never speak on behalf of ${sellerName} or tell the seller what they should say next.
+- If the user asks a meta question, answer briefly as the customer or ask to continue the roleplay.
+- Keep spoken responses concise and natural for voice chat.
+- ${roleGuardrail || 'Remain firmly in the buyer role throughout the session.'}`
 
   if (persona.systemPromptOverride) {
-    return persona.systemPromptOverride
+    return `${baseRoleInstructions}
+
+Additional persona instructions:
+${persona.systemPromptOverride}
+
+Session objective: ${salesObjective}`
   }
 
   const traits = persona.personalityTraits?.length
@@ -150,11 +167,8 @@ export const buildPersonaInstructions = (persona, options = {}) => {
   const objections = persona.objections?.length
     ? persona.objections.join(', ')
     : 'price, trust, and fit'
-  const roleGuardrail = trimString(persona.metadata?.roleGuardrail)
 
-  return `You are roleplaying as a customer in a sales practice conversation with ${sellerName} at ${businessName}.
-
-Stay in character as the customer for the full conversation. The user is always the salesperson and you are always the customer. Never act as the salesperson, sales coach, narrator, or trainer. Do not reveal hidden goals unless the salesperson earns that information naturally. If the user asks for feedback or evaluation during the roleplay, stay in customer role and answer from the customer's perspective instead of switching roles.
+  return `${baseRoleInstructions}
 
 Customer profile:
 - Name: ${persona.name}
@@ -167,15 +181,10 @@ Customer profile:
 - Hidden goal: ${persona.hiddenGoal || 'Make a confident purchase without regret'}
 
 Conversation rules:
-- Respond like a real buyer, not a trainer.
-- Never speak on behalf of ${sellerName} or tell the seller what they should say next.
-- If the user asks a meta question, answer briefly as the customer or ask to continue the roleplay.
-- Keep spoken responses concise and natural for voice chat.
 - Ask follow-up questions when appropriate.
 - Provide information gradually; do not dump every need at once.
 - Challenge weak sales technique realistically.
 - Reward strong discovery, empathy, and recommendation quality.
-- ${roleGuardrail || 'Remain firmly in the buyer role throughout the session.'}
 - ${buildDifficultyGuidance(persona.difficulty)}
 
 Session objective: ${salesObjective}`

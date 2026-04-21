@@ -14,6 +14,50 @@ const customerIntroPrompt =
 const customerResponseGuardrail =
   'Stay in customer role. The user is the salesperson. Do not switch to salesperson, coach, or narrator. If the user asks for feedback, answer only from the customer perspective and continue the roleplay.'
 
+const buildCustomerRealtimeInstructions = ({ persona, sellerName, businessName, salesObjective }) => {
+  const personaName = persona?.name || 'the customer'
+  const scenario =
+    persona?.scenario || persona?.description || 'Shopping for a meaningful household purchase.'
+  const industry = persona?.industry || 'retail sales'
+  const productFocus = persona?.productFocus || 'consumer products'
+  const speakingStyle = persona?.speakingStyle || 'Natural spoken conversation'
+  const personality = Array.isArray(persona?.personalityTraits) && persona.personalityTraits.length
+    ? persona.personalityTraits.join(', ')
+    : 'realistic, human, and situation-aware'
+  const objections = Array.isArray(persona?.objections) && persona.objections.length
+    ? persona.objections.join(', ')
+    : 'price, trust, and fit'
+  const roleGuardrail = persona?.metadata?.roleGuardrail || 'Remain firmly in the buyer role throughout the session.'
+
+  return `You are roleplaying as a customer in a live sales practice conversation with ${
+    sellerName || 'the salesperson'
+  } at ${businessName || 'the store'}.
+
+The user is always the salesperson. You are always the customer. Never act as the salesperson, sales coach, narrator, or trainer. Never speak on behalf of the salesperson. Do not tell the salesperson what they should say next.
+
+Customer profile:
+- Name: ${personaName}
+- Scenario: ${scenario}
+- Industry context: ${industry}
+- Product focus: ${productFocus}
+- Personality: ${personality}
+- Speaking style: ${speakingStyle}
+- Likely objections: ${objections}
+
+Conversation rules:
+- Speak naturally as the customer and keep answers concise for voice chat.
+- Ask follow-up questions when appropriate.
+- Share information gradually instead of front-loading everything.
+- Stay realistic and challenge weak sales technique.
+- If asked for feedback, answer only from the customer's perspective and continue the roleplay.
+- ${roleGuardrail}
+
+Session objective: ${
+    salesObjective ||
+    'Run a realistic customer conversation so the salesperson can practice discovery, objection handling, and closing.'
+  }`
+}
+
 const parseRealtimeEvent = (event, assistantLabel) => {
   if (event.type === 'response.audio_transcript.done' && event.transcript) {
     return { speaker: assistantLabel, text: event.transcript }
@@ -215,6 +259,15 @@ export default function Practice() {
         throw new Error(sessionPayload?.error || 'Unable to create realtime session.')
       }
 
+      const customerRealtimeInstructions = !isCoachMode
+        ? buildCustomerRealtimeInstructions({
+            persona: sessionPayload?.persona || selectedPersona,
+            sellerName: user?.name,
+            businessName,
+            salesObjective,
+          })
+        : null
+
       const ephemeralKey = sessionPayload?.session?.value || sessionPayload?.session?.client_secret?.value
       if (!ephemeralKey) {
         throw new Error('Realtime session was created without a client secret.')
@@ -260,6 +313,17 @@ export default function Practice() {
       dataChannel.addEventListener('open', () => {
         appendLog('system', 'Realtime event channel connected.')
 
+        if (!isCoachMode && customerRealtimeInstructions) {
+          dataChannel.send(
+            JSON.stringify({
+              type: 'session.update',
+              session: {
+                instructions: customerRealtimeInstructions,
+              },
+            })
+          )
+        }
+
         dataChannel.send(
           JSON.stringify({
             type: 'conversation.item.create',
@@ -281,7 +345,7 @@ export default function Practice() {
             type: 'response.create',
             response: !isCoachMode
               ? {
-                  instructions: customerResponseGuardrail,
+                  instructions: `${customerRealtimeInstructions}\n\n${customerResponseGuardrail}`,
                 }
               : undefined,
           })
